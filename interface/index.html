@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DELIVERY EXPRESS // STREET DROP</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- TELA DE LOGIN / DROP PASS -->
+  <div class="login-overlay" id="loginScreen">
+    <form class="login-card" id="loginForm">
+      <div class="login-badge">DROP // 01 — DELIVERY EXPRESS</div>
+      <h1>Oi! Como posso te chamar?</h1>
+      <p>Digite seu nome (apenas letras) pra gente montar seu pedido.</p>
+      <div class="input-group">
+        <label for="nomeInput">Seu nome</label>
+        <input type="text" id="nomeInput" placeholder="Ex.: Lucas Silva" autocomplete="off" />
+      </div>
+      <div class="error-msg" id="loginError"></div>
+      <button type="submit" class="btn-primary">Começar pedido</button>
+    </form>
+  </div>
+
+  <!-- CABEÇALHO -->
+  <header>
+    <div class="header-inner">
+      <div class="brand">
+        <div class="brand-logo">DE</div>
+        <div>
+          <div class="brand-title">Delivery Express</div>
+          <div class="brand-sub" id="greetingText">Olá!</div>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <button type="button" class="btn-undo" id="btnUndo" onclick="desfazerUltimo()">
+          Desfazer último (cls)
+        </button>
+        <button type="button" class="btn-ghost" onclick="trocarUsuario()">
+          Trocar nome
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- CONTEÚDO PRINCIPAL -->
+  <main class="container">
+    <section>
+      <div class="tabs">
+        <button type="button" class="tab-btn active" id="tabComida" onclick="mudarCategoria('comida')">
+          Comidas [12]
+        </button>
+        <button type="button" class="tab-btn" id="tabBebida" onclick="mudarCategoria('bebida')">
+          Bebidas [06]
+        </button>
+        <button type="button" class="tab-btn" id="tabSobremesa" onclick="mudarCategoria('sobremesa')">
+          Sobremesas [08]
+        </button>
+        <button type="button" class="tab-btn" id="tabCombo" onclick="mudarCategoria('combo')">
+          Combos OFF [04]
+        </button>
+      </div>
+
+      <div class="grid-menu" id="menuGrid"></div>
+    </section>
+
+    <!-- CARRINHO LATERAL -->
+    <aside class="cart-card">
+      <div class="cart-header">
+        <h2>Bag / Carrinho</h2>
+        <span id="cartCount" style="font-size: 0.8rem; font-weight: 700; text-transform: uppercase; color: var(--muted);">0 itens</span>
+      </div>
+
+      <div class="cart-items" id="cartItems">
+        <div class="cart-empty">Tá vazio por enquanto. Escolha algo no cardápio!</div>
+      </div>
+
+      <div class="summary-line">
+        <span>Comidas / Combos</span>
+        <span id="totalComidasTxt">R$ 0,00</span>
+      </div>
+      <div class="summary-line">
+        <span>Bebidas</span>
+        <span id="totalBebidasTxt">R$ 0,00</span>
+      </div>
+      <div class="summary-line">
+        <span>Sobremesas</span>
+        <span id="totalSobremesasTxt">R$ 0,00</span>
+      </div>
+      <div class="summary-line">
+        <span>Taxa de entrega</span>
+        <span id="taxaEntregaTxt">R$ 6,00</span>
+      </div>
+      <div class="summary-total">
+        <span>Total geral</span>
+        <span id="totalGeralTxt">R$ 0,00</span>
+      </div>
+
+      <div class="address-box">
+        <label for="enderecoInput">Endereço de entrega</label>
+        <input type="text" id="enderecoInput" placeholder="Rua, número, bairro..." />
+        <div class="error-msg" id="checkoutError" style="margin-top: 6px; margin-bottom: 0;"></div>
+      </div>
+
+      <button type="button" class="btn-primary" onclick="finalizarPedido()">
+        Finalizar pedido
+      </button>
+    </aside>
+  </main>
+
+  <!-- MODAL DE PEDIDO CONFIRMADO -->
+  <div class="modal-backdrop" id="modalConfirmacao">
+    <div class="modal-card">
+      <div class="modal-badge">PEDIDO CONFIRMADO</div>
+      <h2 id="modalTitle">Tudo certo por aqui!</h2>
+      <p style="color: var(--muted); font-size: 0.88rem; margin-top: 4px;" id="modalEndereco"></p>
+
+      <div class="receipt-list">
+        <ul id="modalItens"></ul>
+        <div class="receipt-totals">
+          <p><span>Total comidas / combos:</span><span id="modalComidas"></span></p>
+          <p><span>Total bebidas:</span><span id="modalBebidas"></span></p>
+          <p><span>Total sobremesas:</span><span id="modalSobremesas"></span></p>
+          <p><span>Taxa entrega:</span><span id="modalEntrega"></span></p>
+          <p class="receipt-grand"><span>TOTAL TUDO:</span><span id="modalTotal"></span></p>
+        </div>
+      </div>
+
+      <p style="font-size: 0.9rem; margin-bottom: 16px;" id="modalBomApetite"></p>
+      <button type="button" class="btn-primary" onclick="novoPedido()">Fazer novo pedido</button>
+    </div>
+  </div>
+
+  <!-- TOAST -->
+  <div class="toast" id="toast"></div>
+
+  <script>
+    // Cardápio de comidas: número -> [nome, preço, foto]
+    const comidas = {
+      1: ["X-Burger", 22.00, "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=600&q=80"],
+      2: ["X-Salada", 24.00, "https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=600&q=80"],
+      3: ["X-Bacon", 27.50, "https://images.unsplash.com/photo-1553979455-aa2037458316?auto=format&fit=crop&w=600&q=80"],
+      4: ["Pizza Calabresa", 38.00, "https://images.unsplash.com/photo-1628840042765-356cda07504e?auto=format&fit=crop&w=600&q=80"],
+      5: ["Pizza Margherita", 36.00, "https://images.unsplash.com/photo-1574071318508-1cdbab80d002?auto=format&fit=crop&w=600&q=80"],
+      6: ["Pizza Portuguesa", 42.00, "https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=600&q=80"],
+      7: ["Batata Frita Grande", 18.00, "https://images.unsplash.com/photo-1573080496219-bb080dd4f877?auto=format&fit=crop&w=600&q=80"],
+      8: ["Yakisoba", 34.00, "https://images.unsplash.com/photo-1585032226651-759b368d7246?auto=format&fit=crop&w=600&q=80"],
+      9: ["Marmita de Frango", 25.00, "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?auto=format&fit=crop&w=600&q=80"],
+      10: ["Marmita de Carne", 28.00, "https://images.unsplash.com/photo-1504674900247-0877df9cc836?auto=format&fit=crop&w=600&q=80"],
+      11: ["Porção de Nuggets", 19.00, "https://images.unsplash.com/photo-1562967914-608f82629710?auto=format&fit=crop&w=600&q=80"],
+      12: ["Hot Dog Completo", 17.50, "https://images.unsplash.com/photo-1612392062126-2dd1527042c0?auto=format&fit=crop&w=600&q=80"],
+    };
+
+    // Cardápio de bebidas: número -> [nome, preço, foto]
+    const bebidas = {
+      1: ["Refrigerante Lata", 6.00, "https://images.unsplash.com/photo-1622483767028-3f66f32aef97?auto=format&fit=crop&w=600&q=80"],
+      2: ["Refrigerante 2L", 13.00, "https://images.unsplash.com/photo-1581006852262-e4307cf6283a?auto=format&fit=crop&w=600&q=80"],
+      3: ["Água Mineral sem Gás", 4.00, "https://images.unsplash.com/photo-1548839140-29a749e1cf4d?auto=format&fit=crop&w=600&q=80"],
+      4: ["Suco Natural de Laranja", 9.00, "https://images.unsplash.com/photo-1613478223719-2ab802602423?auto=format&fit=crop&w=600&q=80"],
+      5: ["Cerveja Lata", 8.50, "https://images.unsplash.com/photo-1608270586620-248524c67de9?auto=format&fit=crop&w=600&q=80"],
+      6: ["Chopp Copo 400ml", 12.00, "https://images.unsplash.com/photo-1535958636474-b021ee887b13?auto=format&fit=crop&w=600&q=80"],
+    };
+
+    // Cardápio de sobremesas (8 opções): número -> [nome, preço, foto]
+    const sobremesas = {
+      1: ["Pudim de Leite Condensado", 12.00, "https://images.unsplash.com/photo-1578985545062-69928b1d9587?auto=format&fit=crop&w=600&q=80"],
+      2: ["Brownie com Sorvete", 18.00, "https://images.unsplash.com/photo-1606313564200-e75d5e30476c?auto=format&fit=crop&w=600&q=80"],
+      3: ["Petit Gâteau", 21.00, "https://images.unsplash.com/photo-1624353365286-3f8d62daad51?auto=format&fit=crop&w=600&q=80"],
+      4: ["Mousse de Chocolate", 11.00, "https://images.unsplash.com/photo-1541783245831-57d6fb0926d3?auto=format&fit=crop&w=600&q=80"],
+      5: ["Torta Holandesa", 15.00, "https://images.unsplash.com/photo-1565958011703-44f9829ba187?auto=format&fit=crop&w=600&q=80"],
+      6: ["Açaí na Tigela 400ml", 17.00, "https://images.unsplash.com/photo-1590301157890-4810ed352733?auto=format&fit=crop&w=600&q=80"],
+      7: ["Brigadeiro de Colher", 10.00, "https://images.unsplash.com/photo-1511381939415-e44015466834?auto=format&fit=crop&w=600&q=80"],
+      8: ["Cheesecake de Morango", 16.50, "https://images.unsplash.com/photo-1533134242443-d4fd215305ad?auto=format&fit=crop&w=600&q=80"],
+    };
+
+    // Combos (4 opções): número -> [nome, descrição, precoOriginal, precoCombo, descontoPct, foto]
+    const combos = {
+      1: [
+        "Combo Burger Bacon",
+        "X-Bacon + Batata Frita Grande + Refrigerante Lata",
+        51.50,
+        Number((51.50 * 0.85).toFixed(2)),
+        15,
+        "https://images.unsplash.com/photo-1550547660-d9450f859349?auto=format&fit=crop&w=600&q=80",
+      ],
+      2: [
+        "Combo Pizza & Pudim",
+        "Pizza Calabresa + Refrigerante 2L + Pudim de Leite Condensado",
+        63.00,
+        Number((63.00 * 0.82).toFixed(2)),
+        18,
+        "https://images.unsplash.com/photo-1628840042765-356cda07504e?auto=format&fit=crop&w=600&q=80",
+      ],
+      3: [
+        "Combo Galera",
+        "2x X-Salada + Porção de Nuggets + 2x Refrigerante Lata",
+        79.00,
+        Number((79.00 * 0.80).toFixed(2)),
+        20,
+        "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=600&q=80",
+      ],
+      4: [
+        "Combo Oriental Doce",
+        "Yakisoba + Suco Natural de Laranja + Mousse de Chocolate",
+        54.00,
+        Number((54.00 * 0.85).toFixed(2)),
+        15,
+        "https://images.unsplash.com/photo-1585032226651-759b368d7246?auto=format&fit=crop&w=600&q=80",
+      ],
+    };
+
+    const taxaEntrega = 6.00;
+
+    let nomeUsuario = "";
+    let categoriaAtual = "comida";
+    let carrinho = [];
+    let totalComidas = 0.0;
+    let totalBebidas = 0.0;
+    let totalSobremesas = 0.0;
+    const quantidadesCard = {};
+
+    function formatBRL(valor) {
+      return "R$ " + valor.toFixed(2).replace(".", ",");
+    }
+
+    function mostrarToast(msg) {
+      const toast = document.getElementById("toast");
+      toast.textContent = msg;
+      toast.classList.add("show");
+      clearTimeout(mostrarToast._timer);
+      mostrarToast._timer = setTimeout(() => toast.classList.remove("show"), 2400);
+    }
+
+    function validarNome(nome) {
+      const limpo = nome.trim();
+      const semEspaco = limpo.replace(/\s+/g, "");
+      if (semEspaco === "") {
+        return { ok: false, msg: "Ei, me diz seu nome primeiro pra gente começar 😊" };
+      }
+      const soLetras = /^[A-Za-zÀ-ÖØ-öø-ÿ]+$/.test(semEspaco);
+      if (!soLetras) {
+        return { ok: false, msg: "Hmm, use só letras no nome, tá bom? Nada de números ou símbolos." };
+      }
+      return { ok: true, nome: limpo };
+    }
+
+    document.getElementById("loginForm").addEventListener("submit", (e) => {
+      e.preventDefault();
+      const input = document.getElementById("nomeInput");
+      const erroEl = document.getElementById("loginError");
+      const res = validarNome(input.value);
+
+      if (!res.ok) {
+        erroEl.textContent = res.msg;
+        return;
+      }
+
+      erroEl.textContent = "";
+      nomeUsuario = res.nome;
+      document.getElementById("loginScreen").style.display = "none";
+      document.getElementById("greetingText").textContent =
+        `Tudo certo, ${nomeUsuario}! Fica à vontade pra montar seu pedido.`;
+      renderMenu();
+      renderCarrinho();
+    });
+
+    function trocarUsuario() {
+      document.getElementById("nomeInput").value = nomeUsuario;
+      document.getElementById("loginError").textContent = "";
+      document.getElementById("loginScreen").style.display = "flex";
+    }
+
+    function mudarCategoria(cat) {
+      categoriaAtual = cat;
+      document.getElementById("tabComida").classList.toggle("active", cat === "comida");
+      document.getElementById("tabBebida").classList.toggle("active", cat === "bebida");
+      document.getElementById("tabSobremesa").classList.toggle("active", cat === "sobremesa");
+      document.getElementById("tabCombo").classList.toggle("active", cat === "combo");
+      renderMenu();
+    }
+
+    function getQtdCard(chave) {
+      return quantidadesCard[chave] || 1;
+    }
+
+    function alterarQtdCard(chave, delta) {
+      const atual = getQtdCard(chave);
+      const nova = Math.max(1, atual + delta);
+      quantidadesCard[chave] = nova;
+      const el = document.getElementById(`qty-${chave}`);
+      if (el) el.textContent = nova;
+    }
+
+    function getFonteCategoria(cat) {
+      if (cat === "comida") return comidas;
+      if (cat === "bebida") return bebidas;
+      if (cat === "sobremesa") return sobremesas;
+      return combos;
+    }
+
+    function renderMenu() {
+      const grid = document.getElementById("menuGrid");
+      const fonte = getFonteCategoria(categoriaAtual);
+      grid.innerHTML = "";
+
+      Object.entries(fonte).forEach(([codigo, dados]) => {
+        const chave = `${categoriaAtual}-${codigo}`;
+        const qtd = getQtdCard(chave);
+        const card = document.createElement("div");
+        const numFormatado = String(codigo).padStart(2, "0");
+
+        if (categoriaAtual === "combo") {
+          const [nome, desc, precoOrig, precoCombo, descPct, foto] = dados;
+          const economia = precoOrig - precoCombo;
+
+          card.className = "item-card combo-card";
+          card.innerHTML = `
+            <div>
+              <img class="item-img" src="${foto}" alt="${nome}" loading="lazy" />
+              <div class="item-meta">
+                <span class="item-code">#${numFormatado} // COMBO</span>
+                <span class="discount-badge">${descPct}% OFF</span>
+              </div>
+              <div class="item-name">${nome}</div>
+              <p class="combo-desc">Vem com: ${desc}</p>
+              <div class="price-row">
+                <span class="item-price">${formatBRL(precoCombo)}</span>
+                <span class="price-old">${formatBRL(precoOrig)}</span>
+              </div>
+              <div class="savings-tag">Você economiza ${formatBRL(economia)}</div>
+            </div>
+            <div class="item-controls">
+              <div class="qty-box">
+                <button type="button" class="qty-btn" onclick="alterarQtdCard('${chave}', -1)">-</button>
+                <span class="qty-val" id="qty-${chave}">${qtd}</span>
+                <button type="button" class="qty-btn" onclick="alterarQtdCard('${chave}', 1)">+</button>
+              </div>
+              <button type="button" class="btn-add" onclick="adicionarItem('${categoriaAtual}', ${codigo})">
+                Adicionar
+              </button>
+            </div>
+          `;
+        } else {
+          const [nome, preco, foto] = dados;
+          const rotulo =
+            categoriaAtual === "comida"
+              ? "COMIDA"
+              : categoriaAtual === "bebida"
+              ? "BEBIDA"
+              : "SOBREMESA";
+
+          card.className = "item-card";
+          card.innerHTML = `
+            <div>
+              <img class="item-img" src="${foto}" alt="${nome}" loading="lazy" />
+              <div class="item-code">#${numFormatado} // ${rotulo}</div>
+              <div class="item-name">${nome}</div>
+              <div class="item-price">${formatBRL(preco)}</div>
+            </div>
+            <div class="item-controls">
+              <div class="qty-box">
+                <button type="button" class="qty-btn" onclick="alterarQtdCard('${chave}', -1)">-</button>
+                <span class="qty-val" id="qty-${chave}">${qtd}</span>
+                <button type="button" class="qty-btn" onclick="alterarQtdCard('${chave}', 1)">+</button>
+              </div>
+              <button type="button" class="btn-add" onclick="adicionarItem('${categoriaAtual}', ${codigo})">
+                Adicionar
+              </button>
+            </div>
+          `;
+        }
+
+        grid.appendChild(card);
+      });
+    }
+
+    function adicionarItem(tipo, codigo) {
+      const fonte = getFonteCategoria(tipo);
+      const dados = fonte[codigo];
+      const nome = dados[0];
+      const preco = tipo === "combo" ? dados[3] : dados[1];
+      const chave = `${tipo}-${codigo}`;
+      const qtd = getQtdCard(chave);
+
+      if (!Number.isInteger(qtd) || qtd <= 0) {
+        mostrarToast("Coloca um número maior que zero na quantidade, por favor.");
+        return;
+      }
+
+      const valor = preco * qtd;
+      if (tipo === "comida" || tipo === "combo") {
+        totalComidas += valor;
+      } else if (tipo === "bebida") {
+        totalBebidas += valor;
+      } else if (tipo === "sobremesa") {
+        totalSobremesas += valor;
+      }
+
+      carrinho.push({ tipo, nome, qtd, preco, valor });
+      quantidadesCard[chave] = 1;
+      const qtyEl = document.getElementById(`qty-${chave}`);
+      if (qtyEl) qtyEl.textContent = "1";
+
+      document.getElementById("checkoutError").textContent = "";
+      renderCarrinho();
+      mostrarToast(`Fechado! Adicionei ${qtd}x ${nome} (${formatBRL(valor)}).`);
+    }
+
+    function desfazerUltimo() {
+      if (carrinho.length === 0) {
+        mostrarToast("Ainda não tem nada no carrinho pra desfazer.");
+        return;
+      }
+
+      const ultimo = carrinho.pop();
+      if (ultimo.tipo === "comida" || ultimo.tipo === "combo") {
+        totalComidas -= ultimo.valor;
+      } else if (ultimo.tipo === "bebida") {
+        totalBebidas -= ultimo.valor;
+      } else if (ultimo.tipo === "sobremesa") {
+        totalSobremesas -= ultimo.valor;
+      }
+
+      renderCarrinho();
+      mostrarToast(`Beleza, tirei ${ultimo.qtd}x ${ultimo.nome} do seu pedido.`);
+    }
+
+    function renderCarrinho() {
+      const container = document.getElementById("cartItems");
+      const countEl = document.getElementById("cartCount");
+      const btnUndo = document.getElementById("btnUndo");
+
+      btnUndo.disabled = carrinho.length === 0;
+
+      const totalUnidades = carrinho.reduce((acc, item) => acc + item.qtd, 0);
+      countEl.textContent = `${totalUnidades} ${totalUnidades === 1 ? "item" : "itens"}`;
+
+      if (carrinho.length === 0) {
+        container.innerHTML = `<div class="cart-empty">Tá vazio por enquanto. Escolha algo no cardápio!</div>`;
+      } else {
+        container.innerHTML = carrinho
+          .map(
+            (item) => `
+          <div class="cart-row">
+            <div>
+              <div class="cart-row-title">${item.qtd}x ${item.nome}</div>
+              <div class="cart-row-sub">${formatBRL(item.preco)} cada</div>
+            </div>
+            <div class="cart-row-total">${formatBRL(item.valor)}</div>
+          </div>
+        `
+          )
+          .join("");
+      }
+
+      const subtotal = totalComidas + totalBebidas + totalSobremesas;
+      const totalGeral = subtotal > 0 ? subtotal + taxaEntrega : 0.0;
+
+      document.getElementById("totalComidasTxt").textContent = formatBRL(totalComidas);
+      document.getElementById("totalBebidasTxt").textContent = formatBRL(totalBebidas);
+      document.getElementById("totalSobremesasTxt").textContent = formatBRL(totalSobremesas);
+      document.getElementById("taxaEntregaTxt").textContent = formatBRL(taxaEntrega);
+      document.getElementById("totalGeralTxt").textContent = formatBRL(totalGeral);
+    }
+
+    function finalizarPedido() {
+      const erroEl = document.getElementById("checkoutError");
+      const enderecoInput = document.getElementById("enderecoInput");
+
+      if (carrinho.length === 0) {
+        erroEl.textContent = "Antes de fechar, coloque pelo menos um item no carrinho 😉";
+        return;
+      }
+
+      const endereco = enderecoInput.value.trim();
+      if (endereco === "") {
+        erroEl.textContent = "Preciso do endereço certinho pra conseguir te entregar.";
+        enderecoInput.focus();
+        return;
+      }
+
+      erroEl.textContent = "";
+      const subtotal = totalComidas + totalBebidas + totalSobremesas;
+      const totalFinal = subtotal + taxaEntrega;
+
+      document.getElementById("modalTitle").textContent = `Cliente: ${nomeUsuario}`;
+      document.getElementById("modalEndereco").textContent = `Endereço: ${endereco}`;
+      document.getElementById("modalItens").innerHTML = carrinho
+        .map(
+          (item) =>
+            `<li>${item.qtd}x ${item.nome} (${formatBRL(item.preco)} cada) → <strong>${formatBRL(item.valor)}</strong></li>`
+        )
+        .join("");
+
+      document.getElementById("modalComidas").textContent = formatBRL(totalComidas);
+      document.getElementById("modalBebidas").textContent = formatBRL(totalBebidas);
+      document.getElementById("modalSobremesas").textContent = formatBRL(totalSobremesas);
+      document.getElementById("modalEntrega").textContent = formatBRL(taxaEntrega);
+      document.getElementById("modalTotal").textContent = formatBRL(totalFinal);
+      document.getElementById("modalBomApetite").textContent =
+        `Prontinho, ${nomeUsuario}! Já tá tudo encaminhado. Bom apetite!`;
+
+      document.getElementById("modalConfirmacao").classList.add("open");
+    }
+
+    function novoPedido() {
+      carrinho = [];
+      totalComidas = 0.0;
+      totalBebidas = 0.0;
+      totalSobremesas = 0.0;
+      document.getElementById("enderecoInput").value = "";
+      document.getElementById("modalConfirmacao").classList.remove("open");
+      renderCarrinho();
+    }
+
+    document.addEventListener("keydown", (e) => {
+      const tag = document.activeElement.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA") return;
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "z") {
+        e.preventDefault();
+        desfazerUltimo();
+      }
+    });
+  </script>
+</body>
+</html>
